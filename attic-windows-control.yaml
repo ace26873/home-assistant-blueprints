@@ -1,0 +1,199 @@
+blueprint:
+  name: Attic Windows Control
+  description: >
+    # 🌤️ Attic Windows Control
+
+    **Version: 1.0**
+    
+    🚀 Stay Comfortable! Automatically control the attic windows based on temperature and weather conditions.
+    
+    <details>
+    <summary><b>The Automation Process:</b> 👈</summary>
+
+      - **Trigger Options:**
+        - **Fixed Time:** Automatically closes windows at a specified time.
+        - **Weather-Based Triggers:** Automatically opens or closes windows based on outdoor temperature or rain probability.
+
+      - **Entity Sensors:**
+        - Detects indoor and outdoor temperature sensors.
+        - Detects rain probability sensors.
+
+      - **Notification Options:**
+        - Opt to send messages to one or multiple devices.
+        - Opt to use iOS-specific notification features like interruption levels.
+        - Compatible with Apple iOS devices.
+
+    </details>
+
+    Required = *
+  
+  domain: automation
+  input:
+    entities_settings:
+      name: "Entities Settings *"
+      icon: mdi:devices
+      description: Configure the windows and temperature sensors.
+      collapsed: true
+      input:
+        attic_windows:
+          name: Attic Windows
+          description: Select the covers (windows) to be controlled by this automation.
+          selector:
+            entity:
+              domain: cover
+              multiple: true
+
+        indoor_temperature_sensor:
+          name: Indoor Temperature Sensor
+          description: Select the sensor that measures the indoor temperature.
+          selector:
+            entity:
+              domain: sensor
+              device_class: temperature
+
+        outdoor_temperature_sensor:
+          name: Outdoor Temperature Sensor
+          description: Select the sensor that measures the outdoor temperature.
+          selector:
+            entity:
+              domain: sensor
+              device_class: temperature
+
+        rain_probability_sensor:
+          name: Rain Probability Sensor
+          description: Select the sensor that measures the probability of rain.
+          selector:
+            entity:
+              domain: sensor
+
+    fixed_time_settings:
+      name: "Fixed Time Settings *"
+      icon: mdi:clock-outline
+      description: Configure the time at which the windows should be closed if not closed previously.
+      collapsed: true
+      input:
+        close_time:
+          name: Time to Close Windows
+          description: Select the time of day when the windows should be closed.
+          default: "10:00:00"
+          selector:
+            time: {}
+
+    easy_notify_settings:
+      name: "Easy Notify Settings"
+      icon: mdi:bell-check-outline
+      description: Configure the notification settings.
+      collapsed: true
+      input:
+        include_easy_notify:
+          name: Use The Easy Notify - Device Notification Options
+          description: Enabling this option will send notifications to the selected devices below.
+          default: disabled
+          selector:
+            select:
+              options:
+                - label: Enable Device Notification
+                  value: "enabled"
+                - label: Disable Device Notification
+                  value: "disabled"
+
+        notify_device:
+          name: Notify Devices
+          description: If you've enabled device notifications above, please select the devices to receive the notifications.
+          selector:
+            device:
+              integration: mobile_app
+              multiple: true
+
+        notify_interruption_level:
+          name: Interruption Level - iOS Only
+          description: >
+            On devices running iOS 15 and later, you can configure the interruption level for your notifications to ensure they are delivered according to your preferences.
+            Choose the desired interruption level from the dropdown list.
+            Critical and time-sensitive notifications must be turned ON within the Home Assistant App, and time-sensitive notifications must be allowed in your Focus settings.
+
+
+            For more information on interruption levels [Click Here](https://community.home-assistant.io/t/653754/192?u=blacky).
+          default: active
+          selector:
+            select:
+              mode: dropdown
+              options:
+                - label: Default
+                  value: "active"
+                - label: Critical Notifications
+                  value: "critical"
+                - label: Time Sensitive Notifications
+                  value: "time-sensitive"
+                - label: Quiet Notifications Without Waking Screen
+                  value: "passive"
+
+variables:
+  include_easy_notify: !input include_easy_notify
+  notify_device: !input notify_device
+
+trigger:
+  - platform: time
+    at: !input close_time
+  - platform: numeric_state
+    entity_id: !input rain_probability_sensor
+    above: 0
+  - platform: numeric_state
+    entity_id: !input outdoor_temperature_sensor
+    below: !input indoor_temperature_sensor
+
+condition: []
+
+action:
+  - choose:
+      - alias: "Open windows?"
+        conditions:
+          - condition: numeric_state
+            entity_id: !input outdoor_temperature_sensor
+            below: !input indoor_temperature_sensor
+        sequence:
+          - service: cover.open_cover
+            target:
+              entity_id: !input attic_windows
+          - choose:
+              - alias: "Send open notification to devices"
+                conditions:
+                  - condition: template
+                    value_template: "{{ include_easy_notify == 'enabled' }}"
+                  - condition: template
+                    value_template: "{{ notify_device | length > 0 }}"
+                sequence:
+                  - repeat:
+                      for_each: !input notify_device
+                      sequence:
+                        - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                          data:
+                            message: Attic Windows opened
+                            data:
+                              push:
+                                interruption-level: !input notify_interruption_level
+      - alias: "Close windows"
+        conditions: []
+        sequence:
+          - service: cover.close_cover
+            target:
+              entity_id: !input attic_windows
+          - choose:
+              - alias: "Send close notification to devices"
+                conditions:
+                  - condition: template
+                    value_template: "{{ include_easy_notify == 'enabled' }}"
+                  - condition: template
+                    value_template: "{{ notify_device | length > 0 }}"
+                sequence:
+                  - repeat:
+                      for_each: !input notify_device
+                      sequence:
+                        - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                          data:
+                            message: Attic Windows closed
+                            data:
+                              push:
+                                interruption-level: !input notify_interruption_level
+
+mode: single

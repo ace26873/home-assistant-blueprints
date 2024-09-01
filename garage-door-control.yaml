@@ -1,0 +1,172 @@
+blueprint:
+  name: Garage Door Control
+  description: >
+    # 🚗 Garage Door Control
+
+    **Version: 1.0**
+
+    📦 Automatically control the garage and outside doors using two buttons with different click patterns.
+    
+    The first button can toggle both doors, or individually toggle the garage or outside door.
+    The second button is dedicated to toggling the garage door only.
+
+    <details>
+    <summary><b>The Automation Process:</b> 👈</summary>
+
+      - **Trigger Options:**
+        - **Dual Door Button:** 
+          - 1 Click: Toggles both the garage and outside doors.
+          - 2 Clicks: Toggles the garage door.
+          - 3 Clicks: Toggles the outside door.
+        - **Garage Door Button:** Any click toggles the garage door.
+
+      - **Entity Sensors:**
+        - Detects button presses to trigger the appropriate actions.
+        - Controls garage and outside doors via Shelly switches.
+
+    </details>
+
+    Required = *
+
+  domain: automation
+  input:
+    button_settings:
+      name: "Buttons *"
+      icon: mdi:gesture-tap-button
+      description: Configure the buttons that will trigger the door actions.
+      collapsed: true
+      input:
+        dual_door_button_device:
+          name: Dual Door Button Device
+          description: Select the button device that will trigger the door actions with different click patterns.
+          selector:
+            device:
+              integration: shelly
+
+        garage_door_button_device:
+          name: Garage Door Button Device
+          description: Select the button device that will toggle the garage door on any click.
+          selector:
+            device:
+              integration: shelly
+
+    switch_settings:
+      name: "Switchs *"
+      icon: mdi:toggle-switch
+      description: Configure the switches that control the garage and outside doors.
+      collapsed: true
+      input:
+        garage_door_switch:
+          name: Garage Door Switch
+          description: Select the Shelly switch that controls the garage door.
+          selector:
+            entity:
+              integration: shelly
+              domain: switch
+
+        outside_door_switch:
+          name: Outside Door Switch
+          description: Select the Shelly switch that controls the outside door.
+          selector:
+            entity:
+              integration: shelly
+              domain: switch
+
+trigger:
+  - platform: device
+    device_id: !input dual_door_button_device
+    domain: shelly
+    type: single
+    subtype: button
+    id: dual_door_button_single
+
+  - platform: device
+    device_id: !input dual_door_button_device
+    domain: shelly
+    type: double
+    subtype: button
+    id: dual_door_button_double
+
+  - platform: device
+    device_id: !input dual_door_button_device
+    domain: shelly
+    type: triple
+    subtype: button
+    id: dual_door_button_triple
+
+  - platform: device
+    device_id: !input garage_door_button_device
+    domain: shelly
+    type: single
+    subtype: button
+    id: garage_door_button_single
+
+  - platform: device
+    device_id: !input garage_door_button_device
+    domain: shelly
+    type: double
+    subtype: button
+    id: garage_door_button_double
+
+  - platform: device
+    device_id: !input garage_door_button_device
+    domain: shelly
+    type: triple
+    subtype: button
+    id: garage_door_button_triple
+
+condition: []
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: dual_door_button_single
+        sequence:
+          - service: switch.toggle
+            target:
+              entity_id:
+                - !input garage_door_switch
+                - !input outside_door_switch
+
+      - conditions:
+          - condition: trigger
+            id: dual_door_button_double
+        sequence:
+          - service: switch.toggle
+            target:
+              entity_id: !input garage_door_switch
+
+      - conditions:
+          - condition: trigger
+            id: dual_door_button_triple
+        sequence:
+          - service: switch.toggle
+            target:
+              entity_id: !input outside_door_switch
+
+      - conditions:
+          - condition: trigger
+            id: garage_door_button_single
+        sequence:
+          - service: switch.toggle
+            target:
+              entity_id: !input garage_door_switch
+
+      - conditions:
+          - condition: trigger
+            id: garage_door_button_double
+        sequence:
+          - service: switch.toggle
+            target:
+              entity_id: !input garage_door_switch
+
+      - conditions:
+          - condition: trigger
+            id: garage_door_button_triple
+        sequence:
+          - service: switch.toggle
+            target:
+              entity_id: !input garage_door_switch
+
+mode: single

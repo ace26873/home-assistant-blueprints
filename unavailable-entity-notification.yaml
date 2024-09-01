@@ -1,0 +1,207 @@
+blueprint:
+  name: Unavailable Entity Notification
+  description: >
+    # 🚫 Unavailable Entity Notification
+
+    **Version: 1.0**
+    
+    🚀 Stay Informed! Automatically detect and notify when any Home Assistant entity becomes unavailable.
+    
+    <details>
+    <summary><b>The Automation Process:</b> 👈</summary>
+
+      - **Trigger Options:**
+        - **Hourly Between Start and End Time:** Automatically checks for unavailable entities every hour between a specified start and end time.
+
+      - **Entity Sensors:**
+        - Automatically detects all entities in Home Assistant.
+        - Detects unavailable entities.
+
+      - **Notification Options:**
+        - Opt to send messages to one or multiple devices.
+        - Opt to display your notifications directly within the Home Assistant user interface (UI).
+        - Opt to receive a confirmation message if all batteries are okay.
+        - Compatible with Apple iOS devices.
+
+    </details>
+
+    Required = *
+  domain: automation
+  input:
+    time_settings:
+      name: "Time Settings *"
+      icon: mdi:cog-outline
+      description: Automatically checks for unavailable entities every hour between the specified start and end time each day.
+      collapsed: true
+      input:
+        start_time:
+          name: Start Time
+          description: Set the start time to begin checking for unavailable entities.
+          default: '08:00:00'
+          selector:
+            time:
+        end_time:
+          name: End Time
+          description: Set the end time to stop checking for unavailable entities.
+          default: '20:00:00'
+          selector:
+            time:
+    easy_notify_settings:
+      name: "Easy Notify"
+      icon: mdi:bell-check-outline
+      collapsed: true
+      input:
+        include_easy_notify:
+          name: Use The Easy Notify - Device Notification Options (Optional)
+          description: Enabling this option will send notifications to the selected devices.
+          default: enable_easy_notify
+          selector:
+            select:
+              options:
+                - label: Enable Device Notification
+                  value: "enable_easy_notify"
+                - label: Enable Device Notification + Okay Confirmation Message
+                  value: "enable_easy_okay_notify"
+                - label: Disable Device Notification
+                  value: "disabled_easy_notify"
+        include_persistent_notification:
+          name: Use The Easy Notify - UI Notification Options (Optional)
+          description: Enabling this option will display notifications directly within the Home Assistant user interface (UI).
+            You can also opt to receive a confirmation message in the UI if all entities are available.
+          default: disabled_persistent_notification
+          selector:
+            select:
+              options:
+                - label: Enable UI Notification
+                  value: "enable_persistent_notification"
+                - label: Enable UI Notification + Okay Confirmation Message
+                  value: "enable_persistent_okay_notification"
+                - label: Disable UI Notification
+                  value: "disabled_persistent_notification"
+        notify_device:
+          name: Devices Notified (Optional)
+          description: Select the devices to receive the notifications.
+          default: []
+          selector:
+            device:
+              filter:
+                - integration: mobile_app
+              multiple: true
+        notify_title:
+          name: Title *
+          description: Enter the notification title of your message.
+          default: Unavailable Entities in Home Assistant
+          selector:
+            text:
+        notify_okay_message:
+          name: Okay Confirmation Message
+          description: Enter the notification message you would like to receive when all your entities are available.
+          default: YES! All entities are available :)
+          selector:
+            text:
+        notify_interruption_level:
+          name: Interruption Level - iOS Only *
+          description: >
+            On devices running iOS 15 and later, you can configure the interruption level for your notifications to ensure they are delivered according to your preferences.
+            Choose the desired interruption level from the dropdown list.
+            Critical and time-sensitive notifications must be turned ON within the Home Assistant App, and time-sensitive notifications must be allowed in your Focus settings.
+
+
+            For more information on interruption levels [Click Here](https://community.home-assistant.io/t/653754/192?u=blacky).
+          default: active
+          selector:
+            select:
+              mode: dropdown
+              options:
+                - label: Default
+                  value: "active"
+                - label: Critical Notifications
+                  value: "critical"
+                - label: Time Sensitive Notifications
+                  value: "time-sensitive"
+                - label: Quiet Notifications Without Waking Screen
+                  value: "passive"
+
+mode: restart
+max_exceeded: silent
+
+variables:
+  start_time: !input start_time
+  end_time: !input end_time
+  include_easy_notify: !input include_easy_notify
+  include_persistent_notification: !input include_persistent_notification
+  notify_device: !input notify_device
+  notify_title: !input notify_title
+  notify_okay_message: !input notify_okay_message
+  notify_interruption_level: !input notify_interruption_level
+
+trigger:
+  - platform: time_pattern
+    minutes: "0"
+    seconds: "0"
+
+condition:
+  - condition: time
+    after: !input start_time
+    before: !input end_time
+
+action:
+  # First, handle notifications to devices
+  - choose:
+      - alias: "Notify devices if entities are unavailable"
+        conditions:
+          - "{{ states | selectattr('state', '==', 'unavailable') | list | length > 0 }}"
+          - "{{ include_easy_notify in ['enable_easy_notify', 'enable_easy_okay_notify'] }}"
+          - "{{ notify_device | length > 0 }}"
+        sequence:
+          - repeat:
+              for_each: !input notify_device
+              sequence:
+                - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                  data:
+                    title: !input notify_title
+                    message: >-
+                      {% set unavailable_entities = states | selectattr('state', '==', 'unavailable') | map(attribute='entity_id') | list %}
+                      {{ unavailable_entities | join(', ') }}
+                    data:
+                      push:
+                        interruption-level: !input notify_interruption_level
+      - alias: "Send okay confirmation to devices"
+        conditions:
+          - "{{ states | selectattr('state', '==', 'unavailable') | list | length == 0 }}"
+          - "{{ include_easy_notify == 'enable_easy_okay_notify' }}"
+          - "{{ notify_device | length > 0 }}"
+        sequence:
+          - repeat:
+              for_each: !input notify_device
+              sequence:
+                - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                  data:
+                    title: !input notify_title
+                    message: !input notify_okay_message
+                    data:
+                      push:
+                        interruption-level: !input notify_interruption_level
+
+  # Then, handle notifications to the Home Assistant UI
+  - choose:
+      - alias: "Notify UI if entities are unavailable"
+        conditions:
+          - "{{ states | selectattr('state', '==', 'unavailable') | list | length > 0 }}"
+          - "{{ include_persistent_notification in ['enable_persistent_notification', 'enable_persistent_okay_notification'] }}"
+        sequence:
+          - service: persistent_notification.create
+            data:
+              title: "🚫 {{notify_title}}"
+              message: >-
+                {% set unavailable_entities = states | selectattr('state', '==', 'unavailable') | map(attribute='entity_id') | list %}
+                {{ unavailable_entities | join(', ') }}
+      - alias: "Send okay confirmation to UI"
+        conditions:
+          - "{{ states | selectattr('state', '==', 'unavailable') | list | length == 0 }}"
+          - "{{ include_persistent_notification == 'enable_persistent_okay_notification' }}"
+        sequence:
+          - service: persistent_notification.create
+            data:
+              title: "🚫 {{notify_title}}"
+              message: !input notify_okay_message

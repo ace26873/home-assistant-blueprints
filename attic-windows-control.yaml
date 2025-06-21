@@ -148,6 +148,8 @@ action:
   - choose:
       - alias: "Open windows?"
         conditions:
+          - condition: template
+            value_template: "{{ trigger.platform != 'time' }}"
           - condition: numeric_state
             entity_id: !input outdoor_temperature_sensor
             below: !input indoor_temperature_sensor

@@ -131,16 +131,20 @@ blueprint:
 variables:
   include_easy_notify: !input include_easy_notify
   notify_device: !input notify_device
+  rain_probability_sensor: !input rain_probability_sensor
 
 trigger:
   - platform: time
     at: !input close_time
+    id: close_time
   - platform: numeric_state
     entity_id: !input rain_probability_sensor
     above: 0
+    id: rain_detected
   - platform: numeric_state
     entity_id: !input outdoor_temperature_sensor
     below: !input indoor_temperature_sensor
+    id: cooler_outside
 
 condition: []
 
@@ -148,11 +152,10 @@ action:
   - choose:
       - alias: "Open windows?"
         conditions:
+          - condition: trigger
+            id: cooler_outside
           - condition: template
-            value_template: "{{ trigger.platform != 'time' }}"
-          - condition: numeric_state
-            entity_id: !input outdoor_temperature_sensor
-            below: !input indoor_temperature_sensor
+            value_template: "{{ states(rain_probability_sensor) | float(101) <= 0 }}"
         sequence:
           - service: cover.open_cover
             target:

@@ -125,10 +125,20 @@ blueprint:
       icon: mdi:battery-sync-outline
       collapsed: true
       input:
+        custom_group_battery_level:
+          name: Battery Group - Low Warning Level
+          description: Set the battery low warning percentage to identify all batteries below this level.
+          default: 20
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 1
+              unit_of_measurement: '%'
         custom_group:
           name: Battery Group Sensors (Optional)
           description: You can select a battery group to be included in your notifications.
-            This battery group has its own independent 'Battery Low Warning Level' setting below.
+            This battery group has its own independent 'Battery Low Warning Level' setting above.
             When using all batteries together with the battery group in a single automation, it is recommended to exclude the grouped batteries in the 'Excluded Battery Sensors' section above.
             
             
@@ -141,16 +151,6 @@ blueprint:
             target:
               entity:
                 device_class: battery
-        custom_group_battery_level:
-          name: Battery Group - Low Warning Level
-          description: Set the battery low warning percentage to identify all batteries below this level.
-          default: 20
-          selector:
-            number:
-              min: 1
-              max: 100
-              step: 1
-              unit_of_measurement: '%'
     easy_notify_settings:
       name: "Easy Notify"
       icon: mdi:bell-check-outline

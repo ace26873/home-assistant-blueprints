@@ -107,6 +107,26 @@ blueprint:
               step: 0.5
               unit_of_measurement: "°C"
 
+        opening_stabilization_period:
+          name: Opening Stabilization Period
+          description: Require the opening temperature conditions to remain continuously true for this duration before opening the windows.
+          default:
+            hours: 0
+            minutes: 5
+            seconds: 0
+          selector:
+            duration: {}
+
+        closing_stabilization_period:
+          name: Closing Stabilization Period
+          description: Require the comfort-related closing condition to remain continuously true for this duration before closing the windows. Rain and fixed-time closures remain immediate.
+          default:
+            hours: 0
+            minutes: 5
+            seconds: 0
+          selector:
+            duration: {}
+
     fixed_time_settings:
       name: "Fixed Time Settings *"
       icon: mdi:clock-outline
@@ -205,6 +225,7 @@ trigger:
       {{ is_number(indoor) and is_number(outdoor)
          and (indoor | float(0)) >= (minimum_indoor_temperature | float(28))
          and difference >= (open_temperature_difference | float(2)) }}
+    for: !input opening_stabilization_period
     id: cooler_outside
   - platform: template
     value_template: >-
@@ -213,6 +234,7 @@ trigger:
       {% set difference = (indoor | float(0)) - (outdoor | float(0)) %}
       {{ is_number(indoor) and is_number(outdoor)
          and difference < (close_temperature_difference | float(0.5)) }}
+    for: !input closing_stabilization_period
     id: warmer_outside
 
 condition: []

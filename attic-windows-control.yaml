@@ -28,12 +28,14 @@ blueprint:
     Required = *
   
   domain: automation
+  homeassistant:
+    min_version: "2024.6.0"
   input:
     entities_settings:
       name: "Entities Settings *"
       icon: mdi:devices
       description: Configure the windows and temperature sensors.
-      collapsed: true
+      collapsed: false
       input:
         attic_windows:
           name: Attic Windows
@@ -135,6 +137,7 @@ blueprint:
         notify_device:
           name: Notify Devices
           description: If you've enabled device notifications above, please select the devices to receive the notifications.
+          default: []
           selector:
             device:
               integration: mobile_app

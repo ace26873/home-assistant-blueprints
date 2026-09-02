@@ -66,6 +66,34 @@ blueprint:
             entity:
               domain: sensor
 
+    temperature_settings:
+      name: "Temperature Settings *"
+      icon: mdi:thermometer-lines
+      description: Configure the temperature difference required to open and close the windows. The closing difference must be lower than the opening difference.
+      collapsed: true
+      input:
+        open_temperature_difference:
+          name: Opening Temperature Difference
+          description: Open when the indoor temperature is at least this much warmer than the outdoor temperature.
+          default: 2
+          selector:
+            number:
+              min: 0.5
+              max: 10
+              step: 0.5
+              unit_of_measurement: "°C"
+
+        close_temperature_difference:
+          name: Closing Temperature Difference
+          description: Close when the indoor-to-outdoor temperature difference falls below this value. Keep this lower than the opening difference.
+          default: 0.5
+          selector:
+            number:
+              min: 0
+              max: 9.5
+              step: 0.5
+              unit_of_measurement: "°C"
+
     fixed_time_settings:
       name: "Fixed Time Settings *"
       icon: mdi:clock-outline
@@ -133,6 +161,12 @@ variables:
   notify_device: !input notify_device
   rain_probability_sensor: !input rain_probability_sensor
 
+trigger_variables:
+  indoor_temperature_entity: !input indoor_temperature_sensor
+  outdoor_temperature_entity: !input outdoor_temperature_sensor
+  open_temperature_difference: !input open_temperature_difference
+  close_temperature_difference: !input close_temperature_difference
+
 trigger:
   - platform: time
     at: !input close_time
@@ -141,10 +175,22 @@ trigger:
     entity_id: !input rain_probability_sensor
     above: 0
     id: rain_detected
-  - platform: numeric_state
-    entity_id: !input outdoor_temperature_sensor
-    below: !input indoor_temperature_sensor
+  - platform: template
+    value_template: >-
+      {% set indoor = states(indoor_temperature_entity) %}
+      {% set outdoor = states(outdoor_temperature_entity) %}
+      {% set difference = (indoor | float(0)) - (outdoor | float(0)) %}
+      {{ is_number(indoor) and is_number(outdoor)
+         and difference >= (open_temperature_difference | float(2)) }}
     id: cooler_outside
+  - platform: template
+    value_template: >-
+      {% set indoor = states(indoor_temperature_entity) %}
+      {% set outdoor = states(outdoor_temperature_entity) %}
+      {% set difference = (indoor | float(0)) - (outdoor | float(0)) %}
+      {{ is_number(indoor) and is_number(outdoor)
+         and difference < (close_temperature_difference | float(0.5)) }}
+    id: warmer_outside
 
 condition: []
 

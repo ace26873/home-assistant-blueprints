@@ -74,6 +74,17 @@ blueprint:
       description: Configure the temperature difference required to open and close the windows. The closing difference must be lower than the opening difference.
       collapsed: true
       input:
+        minimum_indoor_temperature:
+          name: Minimum Indoor Temperature
+          description: Prevent the windows from opening unless the indoor temperature is at least this value.
+          default: 28
+          selector:
+            number:
+              min: 10
+              max: 40
+              step: 0.5
+              unit_of_measurement: "°C"
+
         open_temperature_difference:
           name: Opening Temperature Difference
           description: Open when the indoor temperature is at least this much warmer than the outdoor temperature.
@@ -174,6 +185,7 @@ variables:
 trigger_variables:
   indoor_temperature_entity: !input indoor_temperature_sensor
   outdoor_temperature_entity: !input outdoor_temperature_sensor
+  minimum_indoor_temperature: !input minimum_indoor_temperature
   open_temperature_difference: !input open_temperature_difference
   close_temperature_difference: !input close_temperature_difference
 
@@ -191,6 +203,7 @@ trigger:
       {% set outdoor = states(outdoor_temperature_entity) %}
       {% set difference = (indoor | float(0)) - (outdoor | float(0)) %}
       {{ is_number(indoor) and is_number(outdoor)
+         and (indoor | float(0)) >= (minimum_indoor_temperature | float(28))
          and difference >= (open_temperature_difference | float(2)) }}
     id: cooler_outside
   - platform: template

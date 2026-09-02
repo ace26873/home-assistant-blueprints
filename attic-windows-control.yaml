@@ -97,13 +97,20 @@ blueprint:
     fixed_time_settings:
       name: "Fixed Time Settings *"
       icon: mdi:clock-outline
-      description: Configure the time at which the windows should be closed if not closed previously.
+      description: Configure the daily period during which the windows may open automatically. They remain closed outside this period.
       collapsed: true
       input:
+        open_time:
+          name: Opening Period Start
+          description: Select when temperature changes may begin opening the windows. Reaching this time does not open them by itself.
+          default: "20:00:00"
+          selector:
+            time: {}
+
         close_time:
           name: Time to Close Windows
-          description: Select the time of day when the windows should be closed.
-          default: "10:00:00"
+          description: Select the time when the windows should close and remain closed until the next opening period.
+          default: "09:00:00"
           selector:
             time: {}
 
@@ -200,6 +207,9 @@ action:
         conditions:
           - condition: trigger
             id: cooler_outside
+          - condition: time
+            after: !input open_time
+            before: !input close_time
           - condition: template
             value_template: "{{ states(rain_probability_sensor) | float(101) <= 0 }}"
         sequence:

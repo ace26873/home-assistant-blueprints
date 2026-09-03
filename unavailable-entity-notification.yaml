@@ -27,6 +27,8 @@ blueprint:
 
     Required = *
   domain: automation
+  homeassistant:
+    min_version: "2024.6.0"
   input:
     time_settings:
       name: "Time Settings *"

@@ -3,7 +3,7 @@ blueprint:
   description: >
     # 🚫 Unavailable Entity Notification
 
-    **Version: 1.0**
+    **Version: 1.1**
     
     🚀 Stay Informed! Automatically detect and notify when any Home Assistant entity becomes unavailable.
     
